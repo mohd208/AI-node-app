@@ -1,0 +1,12 @@
+# No entries exist yet in deploy/secret-vars.staging.yaml (a starter file
+# was just created -- see that file), so infra/terraform/irsa.tf's
+# app_pod_role_arn output is empty and no IRSA annotation is added here.
+# Once the app has real runtime secrets, re-run the agent (or add the
+# eks.amazonaws.com/role-arn annotation by hand) to wire this up.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ai-node-app
+  namespace: ai-node-app-staging
+  labels:
+    app: ai-node-app

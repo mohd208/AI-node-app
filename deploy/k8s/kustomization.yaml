@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ai-node-app-staging
+resources:
+  - pod-identity.yaml
+  - deployment.yaml
+  - service.yaml
+# secret-store.yaml and external-secret.yaml are omitted: deploy/secret-vars.staging.yaml
+# has no real entries yet (starter placeholder only). Add both back, plus
+# envFrom.secretRef in deployment.yaml, once this app has real secrets.

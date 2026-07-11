@@ -1,0 +1,97 @@
+name: Infrastructure
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - infra/terraform/**
+      - .github/workflows/infra.yml
+  push:
+    branches:
+      - stage
+    paths:
+      - infra/terraform/**
+      - .github/workflows/infra.yml
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+
+jobs:
+  terraform-plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: infra/terraform
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_BOOTSTRAP_ROLE_ARN: ${{ vars.AWS_BOOTSTRAP_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_BOOTSTRAP_ROLE_ARN }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - run: terraform fmt -check -recursive
+      - run: terraform init -input=false
+      - run: terraform validate
+      - run: terraform plan -input=false
+
+  terraform-apply:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: infra/terraform
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_BOOTSTRAP_ROLE_ARN: ${{ vars.AWS_BOOTSTRAP_ROLE_ARN }}
+      TARGET_ENVIRONMENT: staging
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+      KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_BOOTSTRAP_ROLE_ARN }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - run: terraform init -input=false
+      - run: terraform apply -auto-approve -input=false
+
+      - name: Export Terraform outputs to GitHub environment variables
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          AWS_DEPLOY_ROLE_ARN="$(terraform output -raw github_actions_deploy_role_arn)"
+          ECR_REPOSITORY_URL="$(terraform output -raw ecr_repository_url)"
+          ECR_REPOSITORY_NAME="$(terraform output -raw ecr_repository_name)"
+          IRSA_ROLE_ARN="$(terraform output -raw app_pod_role_arn)"
+          EKS_CLUSTER_ROLE_ARN="$(terraform output -raw eks_cluster_role_arn)"
+          EKS_NODE_GROUP_ROLE_ARNS="$(terraform output -json eks_node_group_role_arns)"
+          TERRAFORM_STATE_BUCKET="$(terraform output -raw terraform_state_bucket)"
+          TERRAFORM_STATE_LOCK_TABLE="$(terraform output -raw terraform_state_lock_table)"
+          gh variable set AWS_REGION --env "$TARGET_ENVIRONMENT" --body "$AWS_REGION"
+          gh variable set AWS_DEPLOY_ROLE_ARN --env "$TARGET_ENVIRONMENT" --body "$AWS_DEPLOY_ROLE_ARN"
+          gh variable set ECR_REPOSITORY_URL --env "$TARGET_ENVIRONMENT" --body "$ECR_REPOSITORY_URL"
+          gh variable set ECR_REPOSITORY_NAME --env "$TARGET_ENVIRONMENT" --body "$ECR_REPOSITORY_NAME"
+          gh variable set EKS_CLUSTER_NAME --env "$TARGET_ENVIRONMENT" --body "$EKS_CLUSTER_NAME"
+          gh variable set KUBERNETES_NAMESPACE --env "$TARGET_ENVIRONMENT" --body "$KUBERNETES_NAMESPACE"
+          gh variable set IRSA_ROLE_ARN --env "$TARGET_ENVIRONMENT" --body "$IRSA_ROLE_ARN"
+          gh variable set EKS_CLUSTER_ROLE_ARN --env "$TARGET_ENVIRONMENT" --body "$EKS_CLUSTER_ROLE_ARN"
+          gh variable set EKS_NODE_GROUP_ROLE_ARNS --env "$TARGET_ENVIRONMENT" --body "$EKS_NODE_GROUP_ROLE_ARNS"
+          gh variable set TERRAFORM_STATE_BUCKET --env "$TARGET_ENVIRONMENT" --body "$TERRAFORM_STATE_BUCKET"
+          gh variable set TERRAFORM_STATE_LOCK_TABLE --env "$TARGET_ENVIRONMENT" --body "$TERRAFORM_STATE_LOCK_TABLE"

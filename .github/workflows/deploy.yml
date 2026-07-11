@@ -1,0 +1,80 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: Docker image tag
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+      KUBERNETES_NAMESPACE: ${{ vars.KUBERNETES_NAMESPACE }}
+      ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ECR_REPOSITORY_NAME: ${{ vars.ECR_REPOSITORY_NAME }}
+      # Empty for this app until it has runtime secrets in
+      # deploy/secret-vars.staging.yaml (see irsa.tf's app_pod_role_arn output).
+      IRSA_ROLE_ARN: ${{ vars.IRSA_ROLE_ARN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          docker build -t "$ECR_REPOSITORY_URL:$IMAGE_TAG" .
+          docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Deploy to EKS
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          # No runtime secrets yet -- deploy/secret-vars.staging.yaml is a
+          # starter placeholder (see that file), so IRSA_ROLE_ARN is empty.
+          # Drop the ServiceAccount's role-arn annotation line and skip
+          # applying secret-store.yaml/external-secret.yaml (they don't
+          # exist in deploy/k8s -- see kustomization.yaml).
+          if [ -n "$IRSA_ROLE_ARN" ]; then
+            sed -i "s#APP_POD_ROLE_ARN#$IRSA_ROLE_ARN#" deploy/k8s/pod-identity.yaml
+            kubectl apply -f deploy/k8s/
+          else
+            kubectl apply -f deploy/k8s/pod-identity.yaml -f deploy/k8s/deployment.yaml -f deploy/k8s/service.yaml
+          fi
+          kubectl -n "$KUBERNETES_NAMESPACE" set image "deployment/$ECR_REPOSITORY_NAME" app="$ECR_REPOSITORY_URL:$IMAGE_TAG"
+          kubectl -n "$KUBERNETES_NAMESPACE" rollout status "deployment/$ECR_REPOSITORY_NAME"
