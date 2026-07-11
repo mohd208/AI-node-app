@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-node-app
+  namespace: ai-node-app-staging
+  labels:
+    app: ai-node-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-node-app
+  template:
+    metadata:
+      labels:
+        app: ai-node-app
+    spec:
+      serviceAccountName: ai-node-app
+      containers:
+        - name: app
+          # ECR_REPOSITORY_URL/IMAGE_TAG are only known after
+          # .github/workflows/infra.yml's terraform apply creates the ECR
+          # repo -- deploy.yml's `kubectl set image` step substitutes the
+          # real value on the first deploy, same bootstrap pattern as
+          # templates/kubernetes/deployment.yaml.
+          image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/ai-node-app:IMAGE_TAG
+          ports:
+            - containerPort: 3000
+          # No envFrom.secretRef: deploy/secret-vars.staging.yaml has no real
+          # entries yet (starter file only), so there is no app-secrets
+          # Secret for ExternalSecret to create.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
