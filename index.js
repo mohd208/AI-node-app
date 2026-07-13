@@ -23,4 +23,4 @@ try {
 } catch (err) {
   console.error("10 / 0 error:", err.message);
 }
-// console.log("Discounted price:", getDiscountedPrice(100, 20));
+console.log("Discounted price:", getDiscountedPrice(100, 20));
