@@ -6,9 +6,9 @@ function add(a, b) {
   return a + b;
 }
 
-function divide(a, b) {
-  return a / b;
-}
+// function divide(a, b) {
+//   return a / b;
+// }
 
 function getDiscountedPrice(price, discountPercent) {
   var total = price - (price * discountPercent);
@@ -19,4 +19,4 @@ let unusedVar = 42;
 
 console.log("2 + 3 =", add(2, 3));
 console.log("10 / 0 =", divide(10, 0));
-console.log("Discounted price:", getDiscountedPrice(100, 0.2));
+// console.log("Discounted price:", getDiscountedPrice(100, 0.2));
