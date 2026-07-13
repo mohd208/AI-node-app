@@ -1,22 +1,6 @@
+const { add, divide, getDiscountedPrice } = require("./index.js");
+
 console.log("Hello, My World is here hi hello hello world!");
-
-
-function add(a, b) {
-  return a + b;
-}
-
-function divide(a, b) {
-  if (b === 0) {
-    throw new Error("Cannot divide by zero");
-  }
-  return a / b;
-}
-
-function getDiscountedPrice(price, discountPercent) {
-  var total = price - (price * discountPercent / 100);
-  return total;
-}
-
 console.log("2 + 3 =", add(2, 3));
 try {
   console.log("10 / 0 =", divide(10, 0));
