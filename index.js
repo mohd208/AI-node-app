@@ -1,5 +1,4 @@
 console.log("Hello, My World is here hi hello hello world!");
-console.log("Hello, My World is here hi hello hello world!");
 
 
 function add(a, b) {
