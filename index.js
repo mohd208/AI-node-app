@@ -1,6 +1,3 @@
-console.log("Hello, My World is here hi hello hello world!");
-
-
 function add(a, b) {
   return a + b;
 }
@@ -17,10 +14,15 @@ function getDiscountedPrice(price, discountPercent) {
   return total;
 }
 
-console.log("2 + 3 =", add(2, 3));
-try {
-  console.log("10 / 0 =", divide(10, 0));
-} catch (err) {
-  console.error("10 / 0 error:", err.message);
+if (require.main === module) {
+  console.log("Hello, My World is here hi hello hello world!");
+  console.log("2 + 3 =", add(2, 3));
+  try {
+    console.log("10 / 0 =", divide(10, 0));
+  } catch (err) {
+    console.error("10 / 0 error:", err.message);
+  }
+  console.log("Discounted price:", getDiscountedPrice(100, 20));
 }
-console.log("Discounted price:", getDiscountedPrice(100, 20));
+
+module.exports = { add, divide, getDiscountedPrice };
