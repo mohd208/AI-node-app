@@ -17,8 +17,6 @@ function getDiscountedPrice(price, discountPercent) {
   return total;
 }
 
-let unusedVar = 42;
-
 console.log("2 + 3 =", add(2, 3));
 try {
   console.log("10 / 0 =", divide(10, 0));
