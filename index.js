@@ -13,7 +13,7 @@ function divide(a, b) {
 }
 
 function getDiscountedPrice(price, discountPercent) {
-  var total = price - (price * discountPercent);
+  var total = price - (price * discountPercent / 100);
   return total;
 }
 
@@ -25,4 +25,4 @@ try {
 } catch (err) {
   console.error("10 / 0 error:", err.message);
 }
-// console.log("Discounted price:", getDiscountedPrice(100, 0.2));
+// console.log("Discounted price:", getDiscountedPrice(100, 20));
